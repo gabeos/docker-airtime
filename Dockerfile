@@ -1,5 +1,5 @@
 
-FROM hollowearthradio/baseimage-12.04
+FROM gabeos/baseimage-docker
 MAINTAINER Gabriel Schubiner <gabriel.schubiner@gmail.com>
 
 # Installations
