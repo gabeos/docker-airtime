@@ -1,0 +1,5 @@
+
+# Airtime repository + multiverse for MP3 support 
+deb http://apt.sourcefabric.org/ precise main 
+deb http://archive.ubuntu.com/ubuntu/ precise multiverse 
+
