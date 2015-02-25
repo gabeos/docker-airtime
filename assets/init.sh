@@ -5,7 +5,9 @@
 #  $dbuser = $CC_CONFIG['dsn']['username']
 # ..[password] , ['database'] , ['hostspec']
 
-function init_ssh_keys {
+. deactivation.sh
+
+function update_ssh_keys {
 
     # If there are keys present in /data/ssh VOLUME, copy them to the right place
     if [[ -d /data/ssh ]]; then
@@ -43,7 +45,10 @@ function get_rabbitmqadmin {
     mv ./rabbitmqadmin /usr/bin && chmod +x /usr/bin/rabbitmqadmin
 }
 
-function update_rabbitmq_settings {
+function init_rabbitmq {
+}
+
+function update_rabbitmq {
 # TODO 
 }
 
@@ -52,7 +57,7 @@ function init_apc {
     cp /usr/share/doc/php-apc/apc.php /usr/share/airtime/public/
 }
 
-function update_apc_settings {
+function update_apc {
     if [[ "$APC_ADMIN_PAGE_ENABLE" == true ]]; then
         activate apc.php
         sed -i \
@@ -64,21 +69,26 @@ function update_apc_settings {
     fi
 }
 
-function install_airtime {
-    ./airtime/install_minimal/airtime_install
+function startup {
+    update_ssh_keys
+    check_ssh
+    update_rabbitmq
+    update_cron
+    update_apc
+    #update_liquidsoap
+    #update_icecast
+    #update_airtime
 }
 
 function bootstrap {
-    get_rabbitmqadmin
-    install_airtime
-    update_cron
-    update_apc_settings
+    init_rabbitmq
+    init_apc
+    touch /data/.bootstrap
 }
 
-. deactivation.sh
-
-if [[ -e /data/.bootstrap ]]; then
-    start
-else
+# Main
+if [[ ! -e /data/.bootstrap ]]; then
     bootstrap
 fi
+
+startup

@@ -19,7 +19,7 @@ function add_function() {
     sed -i '
 2a \
 
-3e sed -n "/function '"$1"'.*{$/,/^}[ ^I]*$/ p" '"$2"'
+3e sed -n "/function '"$1"'\s*(.*{$/,/^}[ ^I]*$/ p" '"$2"'
 ' "$3"
 }
 
@@ -44,27 +44,46 @@ done
 echo "New backup will be: $INSTALL_FILE.backup$i"
 # Move section to separate file
 sed -n -i.backup$i '
-/loud \"\\n-*\"$/ {
+/^loud \"\\n-*\"$/ {
     N
     /'"$1"'/I {
         :tl; H; n
-        /loud \"\\n-*\"$/ {
+        /^loud \"\\n-*\"$/ {
             x;w '"$NEW_FILE"'
-            x;b end
+            x;b endm
         }
-        /loud \"\\n-*\"$/ !{
+        /^if / {
+            N;
+           /loud \"\\n-*\"$/ {
+                x;w '"$NEW_FILE"'
+                x;b endm
+            }
             b tl
         }
+        b tl
     }
-    :end
+    :endm 
 }
-/.*/ p
+/^\s\+loud \"\\n-*\"$/ {
+    N
+    /'"$1"'/I {
+        :lpi; H; n
+        /^fi\s*$/ {
+            x;w '"$NEW_FILE"'
+            x;b ends
+        }
+        b lpi
+    }
+    :ends 
+}
+p
 ' $INSTALL_FILE
 
 echo "Adding shebang to new script"
 add_shebang $NEW_FILE
 echo "adding necessary 'loudCmd' function"
 add_function loudCmd "$INSTALL_FILE" "$NEW_FILE"
-
+add_function loud "$INSTALL_FILE" "$NEW_FILE"
+add_function verbose "$INSTALL_FILE" "$NEW_FILE"
 
 # vim: tabstop=4 shiftwidth=4 expandtab

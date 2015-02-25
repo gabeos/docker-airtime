@@ -2,21 +2,32 @@
 FROM phusion/baseimage
 MAINTAINER Gabriel Schubiner <gabriel.schubiner@gmail.com>
 
-# Add Sourcefabric keys and apt repository
-RUN curl http://yum.sourcefabric.org/RPM-GPG-KEY | gpg --import - && \
-    gpg -a --export 174C1854 | apt-key add -
-ADD ./assets/airtime.sources.list /etc/apt/sources.list.d/airtime.sources.list
-    
 # Installations
 RUN apt-get update  
 RUN env DEBIAN_FRONTED="noninteractive" \
-    apt-get install -y --no-install-recommends python-virtualenv 
+    apt-get install -y --no-install-recommends \
+    apache2 \
+    coreutils \
+    libapache2-mod-php5 \
+    libcamomile-ocaml-data \
+    libzend-framework-php \
+    lsb-release \
+    lsof \
+    odbc-postgresql \
+    patch \
+    php5 \
+    php-apc \
+    php5-curl \
+    php-pear \
+    python \
+    pwgen \
+    realpath \
+    php5-pgsql
 
 # Environment variables
 ## APC Configuration
 ENV APC_ADMIN_USER apc
 ENV APC_ADMIN_PASS changeme
-ENV APC_ADMIN_PAGE_ENABLE true
 
 ## Turns off airtime cron script sending stats back tou sourcefabric.
 ENV DISABLE_PHONE_HOME_STATS false
@@ -54,22 +65,32 @@ RUN echo "www-data" >/etc/container_environment/APACHE_RUN_GROUP && \
 RUN mkdir /airtime && \
     curl -L https://github.com/sourcefabric/Airtime/archive/airtime-2.5.2-rc1.tar.gz | tar xz -C /airtime --strip-components=1 
 
-# Remove Postgres installation from install script
-# Remove RabbitMQ installation from install script
-    
+# Remove Postgres & RabbitMQ installation sections from install script
+# Note: This is done through a somewhat complicated `sed` command, that
+# creates incremental backups each time it is run, and moves the sections
+# into a separate script called install_<arg1> in the same dir. 
+# Adds shebang and necessary functions from install script so new script
+# is executable.
+ADD ./assets/scripts/breakout_section.sh /usr/bin/breakout_section
+RUN chmod +x /usr/bin/breakout_section && \
+    breakout_section postgres /airtime/install && \
+    breakout_section rabbitmq /airtime/install 
+   
+# Stop service (re)start commands and run script without user input 
 RUN sed -i \
     -e "s/service icecast2 start/#service icecast2 start/g" \
-    -e "s/^\(loudCmd .*apt-get.*install.*\)postgresql\(.*\)$/\1 \2/g" \
-    -e "/^loudCmd.*apt-get.*rabbitmq-server/loudCmd.*rabbitmqctl.*$/d" \
-    -e "s/^loudCmd.*service apache2 rest.*$/#&/g" \
+    -e "s/^loudCmd.*service apache2 rest.*\$/#&/g" \
+    -e "s!/setup.py install!& --no-init-script!g" \
+    -e "s/initctl reload/#&/g" \
+    -e '/^for i in \//,/^done/ { s/.*/#&/g }' \
     /airtime/install
 
 RUN chmod +x /airtime/install && \
-    /airtime/install
+    /airtime/install -ifa
 
-# PHP Setup
-ADD ./assets/update_php_vars.sh /usr/bin/update_php_vars.sh
-RUN chmod +x /usr/bin/update_php_vars.sh && update_php_vars.sh
+# Add PHP environment update script
+ADD ./assets/scripts/update_php_vars.sh /usr/bin/update_php_vars
+RUN chmod +x /usr/bin/update_php_vars
 
 # Volumes
 VOLUME /data
@@ -82,6 +103,10 @@ EXPOSE 22 80 443
 # Services
 ADD ./assets/services/apache.sh /etc/service/apache/run
 ADD ./assets/services/apache-log-forwarder.sh /etc/service/apache-log-forwarder/run
+RUN cp /airtime/python_apps/pypo/bin/airtime-liquidsoap /etc/service/airtime-liquidsoap/run && \
+    cp /airtime/python_apps/pypo/bin/airtime-playout /etc/service/airtime-playout/run && \
+    cp /airtime/python_apps/media-monitor/bin/airtime-media-monitor /etc/service/airtime-media-monitor/run
+
 RUN chmod -R +x /etc/service/
 
 # Init script
