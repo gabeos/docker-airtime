@@ -72,18 +72,19 @@ RUN mkdir /airtime && \
 # Adds shebang and necessary functions from install script so new script
 # is executable.
 ADD ./assets/scripts/breakout_section.sh /usr/bin/breakout_section
-RUN chmod +x /usr/bin/breakout_section && \
-    breakout_section postgres /airtime/install && \
-    breakout_section rabbitmq /airtime/install 
+RUN chmod +x /usr/bin/breakout_section 
+    #breakout_section postgres /airtime/install && \
+    #breakout_section rabbitmq /airtime/install 
    
 # Stop service (re)start commands and run script without user input 
 RUN sed -i \
     -e "s/service icecast2 start/#service icecast2 start/g" \
     -e "s/^loudCmd.*service apache2 rest.*\$/#&/g" \
-    -e "s!/setup.py install!& --no-init-script!g" \
     -e "s/initctl reload/#&/g" \
     -e '/^for i in \//,/^done/ { s/.*/#&/g }' \
     /airtime/install
+    
+#-e "s!/setup.py install!& --no-init-script!g" \
 
 RUN chmod +x /airtime/install && \
     /airtime/install -ifa
