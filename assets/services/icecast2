@@ -1,0 +1,3 @@
+#!/bin/bash
+
+exec setuser icecast2 /usr/bin/icecast2 -c "/etc/icecast2/icecast.xml"

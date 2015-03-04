@@ -1,0 +1,3 @@
+#!/bin/bash
+
+exec setuser pulse pulseaudio --daemonize=false --realtime=true --system=true 
